@@ -65,8 +65,9 @@
       pointer-events: auto;
     }
     .theme .btn{
-      display:inline-flex; align-items:center; gap:8px;
-      height:36px; line-height:36px; padding:0 14px; user-select:none;
+      display:inline-flex; align-items:center; justify-content:center; gap:0;
+      height:40px; width:40px; padding:0; user-select:none;
+      font-size:20px;
     }
 
     /* ====== Controles ====== */
@@ -231,11 +232,11 @@
 
       /* Tema: más grande */
       .theme{
-        right: 12px; top: 10px;
+        right: 12px; top: 12px;
       }
       .theme .btn{
-        height:44px; padding:0 12px;
-        font-size:13px;
+        height:36px; width:36px;
+        font-size:18px;
       }
 
       /* Controles: stack vertical */
@@ -395,7 +396,7 @@
 
   <!-- Botón de tema -->
   <div class="theme">
-    <button id="themeToggle" class="btn"><span id="themeIcon">🌙</span> <span id="themeText">Modo oscuro</span></button>
+    <button id="themeToggle" class="btn"><span id="themeIcon">🌙</span></button>
   </div>
 
   <!-- Controles -->
@@ -917,9 +918,8 @@
     /* ==================== Tema ==================== */
     function applyThemeUI(th){
       const icon = document.getElementById('themeIcon');
-      const text = document.getElementById('themeText');
-      if(th==='dark'){ icon.textContent='☀️'; text.textContent='Modo claro'; }
-      else { icon.textContent='🌙'; text.textContent='Modo oscuro'; }
+      if(th==='dark'){ icon.textContent='☀️'; }
+      else { icon.textContent='🌙'; }
     }
     function mapIdForTheme(th){ return th==='dark' ? (MAP_ID_DARK || null) : (MAP_ID_LIGHT || null); }
     function switchMapId(th){

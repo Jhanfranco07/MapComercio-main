@@ -68,12 +68,19 @@
       z-index: 10000;
       pointer-events: auto;
     }
-    .btn{
-      padding:10px 14px; border-radius:10px; border:1px solid var(--ring); background:#fff; cursor:pointer;
-      font-weight:600; transition: box-shadow .25s, transform .08s, background .2s, border-color .2s, color .25s;
-      color:#111827;
-      display:inline-flex; align-items:center; gap:8px;
-      user-select:none;
+    .theme .btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:0;
+      height:40px; width:40px; padding:0; user-select:none;
+      font-size:20px;
+    }
+    @media (max-width: 768px){
+      .theme{
+        right: 12px; top: 12px;
+      }
+      .theme .btn{
+        height:36px; width:36px;
+        font-size:18px;
+      }
     }
     [data-theme="dark"] .btn{ background:#0b1324; color:#e5e7eb; border-color:#223049 }
     .btn:hover{box-shadow:0 10px 28px rgba(26,115,232,.18)}
@@ -347,7 +354,7 @@
   </div>
 
   <div class="theme">
-    <button id="themeToggle" class="btn"><span id="themeIcon">🌙</span> <span id="themeText">Modo oscuro</span></button>
+    <button id="themeToggle" class="btn"><span id="themeIcon">🌙</span></button>
   </div>
 
   <div class="controls">
@@ -693,9 +700,8 @@
     /* ==================== Tema ==================== */
     function applyThemeUI(th){
       const icon = document.getElementById('themeIcon');
-      const text = document.getElementById('themeText');
-      if(th==='dark'){ icon.textContent='☀️'; text.textContent='Modo claro'; }
-      else { icon.textContent='🌙'; text.textContent='Modo oscuro'; }
+      if(th==='dark'){ icon.textContent='☀️'; }
+      else { icon.textContent='🌙'; }
     }
     function mapIdForTheme(th){ return th==='dark' ? (MAP_ID_DARK || null) : (MAP_ID_LIGHT || null); }
     function switchMapId(th){
