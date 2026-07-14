@@ -1334,10 +1334,7 @@ function buildKml(data) {
       <LabelStyle><scale>0.0</scale></LabelStyle>
     </Style>`).join("\n");
 
-  const buildFolder = (name, subset) => {
-    if (!subset.length) return "";
-
-    const placemarks = subset.map((record) => `
+  const buildPlacemark = (record) => `
       <Placemark>
         <name>${escapeHtml(record.nombre || "Sin nombre")}</name>
         <styleUrl>#${styleId(primaryRubro(record))}</styleUrl>
@@ -1353,9 +1350,43 @@ function buildKml(data) {
           <b>Vigencia:</b> ${escapeHtml(record.vigencia || "-")}
         ]]></description>
         <Point><coordinates>${record.lng},${record.lat},0</coordinates></Point>
-      </Placemark>`).join("\n");
+      </Placemark>`;
 
-    return `<Folder><name>${escapeHtml(name)}</name>${placemarks}</Folder>`;
+  const buildRubroFolders = (subset) => {
+    const groups = new Map();
+
+    subset.forEach((record) => {
+      const rubro = primaryRubro(record) || "Sin rubro";
+      if (!groups.has(rubro)) groups.set(rubro, []);
+      groups.get(rubro).push(record);
+    });
+
+    return Array.from(groups.entries())
+      .sort(([a], [b]) => a.localeCompare(b, "es"))
+      .map(([rubro, records]) => {
+        const placemarks = records
+          .slice()
+          .sort((a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es"))
+          .map(buildPlacemark)
+          .join("\n");
+
+        return `
+      <Folder>
+        <name>${escapeHtml(rubro)}</name>
+        ${placemarks}
+      </Folder>`;
+      })
+      .join("\n");
+  };
+
+  const buildFolder = (name, subset) => {
+    if (!subset.length) return "";
+
+    return `
+    <Folder>
+      <name>${escapeHtml(name)}</name>
+      ${buildRubroFolders(subset)}
+    </Folder>`;
   };
 
   const manana = validRecords.filter((record) => record.turno === "manana");
