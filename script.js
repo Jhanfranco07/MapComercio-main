@@ -844,16 +844,21 @@ function selectedMapRecords() {
   return state.allData.filter((record) => state.selectedMapRecordIds.has(recordSelectionKey(record)));
 }
 
+function shouldSelectionIncludeHistory() {
+  return currentMapMode() === "historico";
+}
+
 function renderSelectionPanel() {
   if (!ui.selectionCount) return;
 
   const records = selectedMapRecords();
-  const totalRows = toExportRows(records).length;
+  const includeHistory = shouldSelectionIncludeHistory();
+  const totalRows = toExportRows(records, { includeHistory }).length;
   const hasSelection = records.length > 0;
 
   ui.selectionCount.textContent = `${records.length} comerciante${records.length === 1 ? "" : "s"} seleccionado${records.length === 1 ? "" : "s"}`;
   ui.selectionHint.textContent = hasSelection
-    ? `${totalRows} fila${totalRows === 1 ? "" : "s"} listas para Excel, incluyendo historial si existe.`
+    ? `${totalRows} fila${totalRows === 1 ? "" : "s"} lista${totalRows === 1 ? "" : "s"} para Excel${includeHistory ? ", incluyendo historial si existe." : ", solo con la autorización actual."}`
     : "Puedes seleccionar solo los puntos visibles con los filtros actuales.";
 
   [ui.btnCopySelection, ui.btnDownloadSelectionXlsx, ui.btnDownloadSelectionCsv, ui.btnClearSelection].forEach((button) => {
@@ -1499,10 +1504,11 @@ function getExportDataset() {
 
 const EXPORT_HEADERS = ["id", "nombre", "rubros", "giro", "productos", "zona", "lugar_exacto", "ubicacion", "horario", "licencia", "vigencia", "turno", "estado_autorizacion", "lat", "lng"];
 
-function toExportRows(records = state.allData) {
+function toExportRows(records = state.allData, options = {}) {
+  const includeHistory = options.includeHistory !== false;
   const rows = [];
   records.forEach((record) => {
-    const authorizations = Array.isArray(record.autorizaciones) ? record.autorizaciones : [record];
+    const authorizations = includeHistory && Array.isArray(record.autorizaciones) ? record.autorizaciones : [record];
     authorizations.forEach((item, index) => rows.push({
     id: record.id || "",
     nombre: item.nombre || "",
@@ -1524,8 +1530,8 @@ function toExportRows(records = state.allData) {
   return rows;
 }
 
-function downloadXlsx(records = state.allData, filename = "ambulantes_actualizado.xlsx") {
-  const rows = toExportRows(records);
+function downloadXlsx(records = state.allData, filename = "ambulantes_actualizado.xlsx", options = {}) {
+  const rows = toExportRows(records, options);
   const headers = EXPORT_HEADERS;
   const worksheet = XLSX.utils.json_to_sheet(rows, { header: headers });
   const workbook = XLSX.utils.book_new();
@@ -1548,8 +1554,8 @@ function buildDelimitedExport(rows, separator = ";") {
   return lines.join("\n");
 }
 
-function downloadCsv(records = state.allData, filename = "ambulantes_actualizado.csv") {
-  const rows = toExportRows(records);
+function downloadCsv(records = state.allData, filename = "ambulantes_actualizado.csv", options = {}) {
+  const rows = toExportRows(records, options);
   downloadBlob(filename, new Blob(["\uFEFF" + buildDelimitedExport(rows, ";")], { type: "text/csv;charset=utf-8;" }));
 }
 
@@ -1560,7 +1566,7 @@ async function copySelectionForExcel() {
     return;
   }
 
-  const rows = toExportRows(records);
+  const rows = toExportRows(records, { includeHistory: shouldSelectionIncludeHistory() });
   const text = buildDelimitedExport(rows, "\t");
 
   try {
@@ -1574,13 +1580,13 @@ async function copySelectionForExcel() {
 function downloadSelectionXlsx() {
   const records = selectedMapRecords();
   if (!records.length) return toast("No hay comerciantes seleccionados.", false);
-  downloadXlsx(records, "ambulantes_seleccionados.xlsx");
+  downloadXlsx(records, "ambulantes_seleccionados.xlsx", { includeHistory: shouldSelectionIncludeHistory() });
 }
 
 function downloadSelectionCsv() {
   const records = selectedMapRecords();
   if (!records.length) return toast("No hay comerciantes seleccionados.", false);
-  downloadCsv(records, "ambulantes_seleccionados.csv");
+  downloadCsv(records, "ambulantes_seleccionados.csv", { includeHistory: shouldSelectionIncludeHistory() });
 }
 
 function clearMapSelection() {
