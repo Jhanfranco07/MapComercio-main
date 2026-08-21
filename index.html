@@ -143,6 +143,26 @@
       <p id="coordPreview" class="coord" aria-live="polite">Lat: -, Lng: -</p>
     </section>
 
+    <section class="controls map-selection-editor" aria-label="Selector de comerciantes para Excel">
+      <div class="selection-heading">
+        <span class="material-symbols-outlined" aria-hidden="true">select_check_box</span>
+        <strong>Selección desde el mapa</strong>
+      </div>
+      <p class="selection-help">Activa la selección y toca los puntos del mapa. Luego copia o descarga la información completa.</p>
+      <div class="selection-actions">
+        <button id="btnToggleMapSelection" class="btn primary" type="button"><span class="material-symbols-outlined">touch_app</span> Seleccionar en mapa</button>
+        <button id="btnCopySelection" class="btn" type="button" disabled><span class="material-symbols-outlined">content_copy</span> Copiar Excel</button>
+        <button id="btnDownloadSelectionXlsx" class="btn" type="button" disabled><span class="material-symbols-outlined">table</span> XLSX</button>
+        <button id="btnDownloadSelectionCsv" class="btn" type="button" disabled><span class="material-symbols-outlined">csv</span> CSV</button>
+        <button id="btnClearSelection" class="btn" type="button" disabled><span class="material-symbols-outlined">backspace</span> Limpiar</button>
+      </div>
+      <div class="selection-status">
+        <strong id="selectionCount">0 seleccionados</strong>
+        <span id="selectionHint">Puedes seleccionar solo los puntos visibles con los filtros actuales.</span>
+      </div>
+      <div id="selectionList" class="selection-list" aria-live="polite"></div>
+    </section>
+
     <section class="controls zone-editor" aria-label="Editor de zonas de control">
       <div class="zone-editor-heading">
         <span class="material-symbols-outlined" aria-hidden="true">edit_road</span>

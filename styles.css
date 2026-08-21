@@ -945,6 +945,103 @@ button:focus-visible {
   min-width: 160px;
 }
 
+.map-selection-editor {
+  display: grid;
+  gap: 12px;
+}
+
+.selection-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--brand);
+}
+
+.selection-heading .material-symbols-outlined {
+  font-size: 22px;
+}
+
+.selection-help {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.selection-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.selection-actions .btn {
+  flex: 1 1 130px;
+}
+
+.selection-actions .selection-active {
+  background: #0f766e;
+  border-color: #0f766e;
+  box-shadow: 0 12px 28px rgba(15, 118, 110, 0.22);
+}
+
+.selection-status {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid rgba(15, 118, 110, 0.22);
+  border-radius: 12px;
+  background: rgba(240, 253, 250, 0.78);
+}
+
+.selection-status strong {
+  color: #0f766e;
+}
+
+.selection-status span {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.selection-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.selection-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--ring);
+  border-radius: 999px;
+  background: var(--card-solid);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.selection-chip span:not(.selection-dot) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selection-chip small {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.selection-chip.muted {
+  color: var(--muted);
+}
+
+.selection-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
 .legend-dock {
   display: flex;
   gap: 18px;
@@ -2006,6 +2103,13 @@ button:focus-visible {
   box-shadow:
     0 8px 14px rgba(15, 23, 42, 0.22),
     0 0 0 2px rgba(255, 255, 255, 0.78);
+}
+
+.commerce-marker-icon.selected span {
+  box-shadow:
+    0 10px 20px rgba(15, 23, 42, 0.28),
+    0 0 0 4px rgba(255, 255, 255, 0.92),
+    0 0 0 8px rgba(15, 118, 110, 0.28);
 }
 
 .user-location-icon {

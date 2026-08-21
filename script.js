@@ -61,6 +61,8 @@ const state = {
   zoneFeatures: [],
   zoneDrawHandler: null,
   selectedZoneId: "",
+  mapSelectionMode: false,
+  selectedMapRecordIds: new Set(),
   hasFittedBounds: false
 };
 
@@ -118,6 +120,14 @@ function cacheDom() {
   ui.btnSaveZones = document.getElementById("btnSaveZones");
   ui.btnDeleteZone = document.getElementById("btnDeleteZone");
   ui.zoneEditorStatus = document.getElementById("zoneEditorStatus");
+  ui.btnToggleMapSelection = document.getElementById("btnToggleMapSelection");
+  ui.btnCopySelection = document.getElementById("btnCopySelection");
+  ui.btnDownloadSelectionXlsx = document.getElementById("btnDownloadSelectionXlsx");
+  ui.btnDownloadSelectionCsv = document.getElementById("btnDownloadSelectionCsv");
+  ui.btnClearSelection = document.getElementById("btnClearSelection");
+  ui.selectionCount = document.getElementById("selectionCount");
+  ui.selectionHint = document.getElementById("selectionHint");
+  ui.selectionList = document.getElementById("selectionList");
 }
 
 const normalizeKey = (value) => String(value || "")
@@ -248,6 +258,10 @@ function recordRubros(record) {
 
 function primaryRubro(record) {
   return recordRubros(record)[0] || record.giro || "Sin rubro";
+}
+
+function recordSelectionKey(record) {
+  return String(record?.id || record?.dni || record?.nombre || "");
 }
 
 function iconForRubro(record) {
@@ -813,16 +827,74 @@ function createClusterLayer() {
 
 function markerIconForRecord(record) {
   const isExpired = permitStatus(record) === "Vencido";
+  const isSelected = state.selectedMapRecordIds.has(recordSelectionKey(record));
   const fillColor = isExpired ? EXPIRED_MARKER_STYLE.fillColor : colorForGiro(primaryRubro(record));
   const borderColor = isExpired ? EXPIRED_MARKER_STYLE.color : strokeForTurno(record.turno);
-  const size = isCompactDevice() ? 18 : 20;
+  const size = isSelected ? (isCompactDevice() ? 24 : 26) : (isCompactDevice() ? 18 : 20);
 
   return L.divIcon({
-    className: "commerce-marker-icon",
-    html: `<span style="--marker-fill:${fillColor};--marker-border:${borderColor};--marker-opacity:${isExpired ? 0.58 : 0.96};--marker-size:${size}px"></span>`,
+    className: `commerce-marker-icon${isSelected ? " selected" : ""}`,
+    html: `<span style="--marker-fill:${fillColor};--marker-border:${isSelected ? "#111827" : borderColor};--marker-opacity:${isExpired ? 0.58 : 0.96};--marker-size:${size}px"></span>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2]
   });
+}
+
+function selectedMapRecords() {
+  return state.allData.filter((record) => state.selectedMapRecordIds.has(recordSelectionKey(record)));
+}
+
+function renderSelectionPanel() {
+  if (!ui.selectionCount) return;
+
+  const records = selectedMapRecords();
+  const totalRows = toExportRows(records).length;
+  const hasSelection = records.length > 0;
+
+  ui.selectionCount.textContent = `${records.length} comerciante${records.length === 1 ? "" : "s"} seleccionado${records.length === 1 ? "" : "s"}`;
+  ui.selectionHint.textContent = hasSelection
+    ? `${totalRows} fila${totalRows === 1 ? "" : "s"} listas para Excel, incluyendo historial si existe.`
+    : "Puedes seleccionar solo los puntos visibles con los filtros actuales.";
+
+  [ui.btnCopySelection, ui.btnDownloadSelectionXlsx, ui.btnDownloadSelectionCsv, ui.btnClearSelection].forEach((button) => {
+    if (button) button.disabled = !hasSelection;
+  });
+
+  ui.btnToggleMapSelection?.classList.toggle("selection-active", state.mapSelectionMode);
+  if (ui.btnToggleMapSelection) {
+    ui.btnToggleMapSelection.innerHTML = state.mapSelectionMode
+      ? '<span class="material-symbols-outlined">done</span> Terminar selección'
+      : '<span class="material-symbols-outlined">touch_app</span> Seleccionar en mapa';
+  }
+
+  if (!ui.selectionList) return;
+  ui.selectionList.innerHTML = records.slice(0, 8).map((record) => `
+    <div class="selection-chip">
+      <span class="selection-dot" style="background:${colorForGiro(primaryRubro(record))}"></span>
+      <span>${escapeHtml(record.nombre || "Sin nombre")}</span>
+      <small>${escapeHtml(record.licencia || "-")}</small>
+    </div>
+  `).join("");
+
+  if (records.length > 8) {
+    ui.selectionList.insertAdjacentHTML("beforeend", `<div class="selection-chip muted">+ ${records.length - 8} más</div>`);
+  }
+}
+
+function toggleMapRecordSelection(record, marker) {
+  const key = recordSelectionKey(record);
+  if (!key) return;
+
+  if (state.selectedMapRecordIds.has(key)) {
+    state.selectedMapRecordIds.delete(key);
+    toast("Comerciante quitado de la selección");
+  } else {
+    state.selectedMapRecordIds.add(key);
+    toast("Comerciante agregado a la selección");
+  }
+
+  marker?.setIcon(markerIconForRecord(record));
+  renderSelectionPanel();
 }
 
 function renderMarkers(data, fitView = false) {
@@ -847,7 +919,13 @@ function renderMarkers(data, fitView = false) {
       keyboard: false
     });
 
-    marker.on("click", () => renderMerchantPanel(record, "summary"));
+    marker.on("click", () => {
+      if (state.mapSelectionMode) {
+        toggleMapRecordSelection(record, marker);
+        return;
+      }
+      renderMerchantPanel(record, "summary");
+    });
 
     marker.addTo(state.markersLayer);
     bounds.push([record.lat, record.lng]);
@@ -952,6 +1030,7 @@ function refresh() {
   const filtered = applyFilters();
   renderMarkers(filtered, false);
   updateStats(filtered);
+  renderSelectionPanel();
 
   const hasRecords = state.allData.length > 0;
   ui.btnKml.disabled = !hasRecords;
@@ -964,6 +1043,7 @@ function refreshAndFit() {
   const filtered = applyFilters();
   renderMarkers(filtered, true);
   updateStats(filtered);
+  renderSelectionPanel();
 
   const hasRecords = state.allData.length > 0;
   ui.btnKml.disabled = !hasRecords;
@@ -1417,9 +1497,11 @@ function getExportDataset() {
   return ui.onlyVisible.checked ? applyFilters() : state.allData;
 }
 
-function toExportRows() {
+const EXPORT_HEADERS = ["id", "nombre", "rubros", "giro", "productos", "zona", "lugar_exacto", "ubicacion", "horario", "licencia", "vigencia", "turno", "estado_autorizacion", "lat", "lng"];
+
+function toExportRows(records = state.allData) {
   const rows = [];
-  state.allData.forEach((record) => {
+  records.forEach((record) => {
     const authorizations = Array.isArray(record.autorizaciones) ? record.autorizaciones : [record];
     authorizations.forEach((item, index) => rows.push({
     id: record.id || "",
@@ -1442,29 +1524,75 @@ function toExportRows() {
   return rows;
 }
 
-function downloadXlsx() {
-  const rows = toExportRows();
-  const headers = ["id", "nombre", "rubros", "giro", "productos", "zona", "lugar_exacto", "ubicacion", "horario", "licencia", "vigencia", "turno", "estado_autorizacion", "lat", "lng"];
+function downloadXlsx(records = state.allData, filename = "ambulantes_actualizado.xlsx") {
+  const rows = toExportRows(records);
+  const headers = EXPORT_HEADERS;
   const worksheet = XLSX.utils.json_to_sheet(rows, { header: headers });
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Ambulantes");
-  XLSX.writeFile(workbook, "ambulantes_actualizado.xlsx");
+  XLSX.writeFile(workbook, filename);
 }
 
-function downloadCsv() {
-  const rows = toExportRows();
-  const headers = ["id", "nombre", "rubros", "giro", "productos", "zona", "lugar_exacto", "ubicacion", "horario", "licencia", "vigencia", "turno", "estado_autorizacion", "lat", "lng"];
-  const lines = [headers.join(";")];
+function buildDelimitedExport(rows, separator = ";") {
+  const headers = EXPORT_HEADERS;
+  const lines = [headers.join(separator)];
 
   rows.forEach((row) => {
     const serialized = headers.map((header) => {
       const value = String(row[header] ?? "").replace(/"/g, '""');
-      return /[;\n"]/.test(value) ? `"${value}"` : value;
+      return new RegExp(`[${separator}\\n"]`).test(value) ? `"${value}"` : value;
     });
-    lines.push(serialized.join(";"));
+    lines.push(serialized.join(separator));
   });
 
-  downloadBlob("ambulantes_actualizado.csv", new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" }));
+  return lines.join("\n");
+}
+
+function downloadCsv(records = state.allData, filename = "ambulantes_actualizado.csv") {
+  const rows = toExportRows(records);
+  downloadBlob(filename, new Blob(["\uFEFF" + buildDelimitedExport(rows, ";")], { type: "text/csv;charset=utf-8;" }));
+}
+
+async function copySelectionForExcel() {
+  const records = selectedMapRecords();
+  if (!records.length) {
+    toast("No hay comerciantes seleccionados.", false);
+    return;
+  }
+
+  const rows = toExportRows(records);
+  const text = buildDelimitedExport(rows, "\t");
+
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Información copiada. Ya puedes pegarla en Excel.");
+  } catch (error) {
+    toast("No se pudo copiar automáticamente. Descarga XLSX o CSV.", false);
+  }
+}
+
+function downloadSelectionXlsx() {
+  const records = selectedMapRecords();
+  if (!records.length) return toast("No hay comerciantes seleccionados.", false);
+  downloadXlsx(records, "ambulantes_seleccionados.xlsx");
+}
+
+function downloadSelectionCsv() {
+  const records = selectedMapRecords();
+  if (!records.length) return toast("No hay comerciantes seleccionados.", false);
+  downloadCsv(records, "ambulantes_seleccionados.csv");
+}
+
+function clearMapSelection() {
+  state.selectedMapRecordIds.clear();
+  renderSelectionPanel();
+  renderMarkers(applyFilters(), false);
+}
+
+function toggleMapSelectionMode() {
+  state.mapSelectionMode = !state.mapSelectionMode;
+  renderSelectionPanel();
+  toast(state.mapSelectionMode ? "Toca los puntos del mapa para seleccionarlos." : "Selección en mapa finalizada.");
 }
 
 function applyThemeUi(theme) {
@@ -1596,6 +1724,12 @@ function attachUiEvents() {
     });
   });
 
+  ui.btnToggleMapSelection?.addEventListener("click", toggleMapSelectionMode);
+  ui.btnCopySelection?.addEventListener("click", copySelectionForExcel);
+  ui.btnDownloadSelectionXlsx?.addEventListener("click", downloadSelectionXlsx);
+  ui.btnDownloadSelectionCsv?.addEventListener("click", downloadSelectionCsv);
+  ui.btnClearSelection?.addEventListener("click", clearMapSelection);
+
   ui.btnKml.addEventListener("click", () => {
     const records = getExportDataset().filter((record) => Number.isFinite(record.lat) && Number.isFinite(record.lng));
     if (!records.length) {
@@ -1619,8 +1753,8 @@ function attachUiEvents() {
     downloadBlob("ambulantes_pachacamac.kmz", blob);
   });
 
-  ui.btnXlsx.addEventListener("click", downloadXlsx);
-  ui.btnCsv.addEventListener("click", downloadCsv);
+  ui.btnXlsx.addEventListener("click", () => downloadXlsx());
+  ui.btnCsv.addEventListener("click", () => downloadCsv());
 
   const resizeObserver = new ResizeObserver(adjustFabOffset);
   resizeObserver.observe(ui.exportBar);
