@@ -611,7 +611,20 @@ function visorRenderZones() {
   visorState.zoneFeatures.forEach((feature) => {
     const layer = L.geoJSON(feature, { style: visorZoneStyle(feature.properties?.tipo) }).getLayers()[0];
     if (!layer) return;
-    layer.bindPopup(visorZonePopup(feature));
+    layer.bindPopup(visorZonePopup(feature), {
+      className: "zone-leaflet-popup",
+      closeButton: true,
+      autoPan: true,
+      autoPanPaddingTopLeft: [18, 18],
+      autoPanPaddingBottomRight: [18, 18],
+      maxWidth: 430
+    });
+    const openZonePopup = (event) => {
+      if (event) L.DomEvent.stopPropagation(event);
+      layer.openPopup();
+    };
+    layer.on("click", openZonePopup);
+    layer.on("touchend", openZonePopup);
     visorState.zonesLayer.addLayer(layer);
   });
   visorState.zonesLayer.bringToBack();

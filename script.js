@@ -723,8 +723,21 @@ function renderZones() {
   state.zoneFeatures.forEach((feature) => {
     const layer = L.geoJSON(feature, { style: zoneStyle(feature.properties?.tipo, feature.properties?.id === state.selectedZoneId) }).getLayers()[0];
     if (!layer) return;
-    layer.bindPopup(zonePopup(feature));
-    layer.on("click", () => selectZone(feature.properties?.id));
+    layer.bindPopup(zonePopup(feature), {
+      className: "zone-leaflet-popup",
+      closeButton: true,
+      autoPan: true,
+      autoPanPaddingTopLeft: [18, 18],
+      autoPanPaddingBottomRight: [18, 18],
+      maxWidth: 430
+    });
+    const selectAndOpenZone = (event) => {
+      if (event) L.DomEvent.stopPropagation(event);
+      selectZone(feature.properties?.id);
+      layer.openPopup();
+    };
+    layer.on("click", selectAndOpenZone);
+    layer.on("touchend", selectAndOpenZone);
     state.zonesLayer.addLayer(layer);
   });
 }
