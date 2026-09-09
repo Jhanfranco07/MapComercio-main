@@ -9,6 +9,8 @@ const files = [
   "visor_ambulantes.html",
   "negocios.html",
   "styles.css",
+  "interface.css",
+  "interface.js",
   "data-source.js",
   "script.js",
   "visor.js",

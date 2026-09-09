@@ -161,7 +161,7 @@ function isCompactDevice() {
 
 function toast(message, ok = true) {
   ui.toast.textContent = message;
-  ui.toast.style.background = ok ? "#0ea5e9" : "#ef4444";
+  ui.toast.dataset.tone = ok ? "success" : "error";
   ui.toast.classList.add("show");
   window.clearTimeout(state.toastTimer);
   state.toastTimer = window.setTimeout(() => ui.toast.classList.remove("show"), 2400);
@@ -411,6 +411,7 @@ function getPermitPanel() {
 function closeMerchantPanel() {
   const panel = document.getElementById("merchantPanel");
   if (panel) panel.classList.remove("open", "detail-mode");
+  window.ComercioUI.panelClosed();
 }
 
 function renderPermitHistory(record) {
@@ -438,7 +439,7 @@ function renderMerchantPanel(record, mode = "summary") {
     <div class="merchant-panel-card">
       <div class="panel-handle"></div>
       <div class="panel-header">
-        <button class="panel-icon-btn" type="button" data-action="${detail ? "summary" : "close"}">
+        <button class="panel-icon-btn" type="button" data-action="${detail && !document.body.classList.contains("search-mode") ? "summary" : "close"}">
           <span class="material-symbols-outlined">${detail ? "arrow_back" : "close"}</span>
         </button>
         <div>
@@ -454,14 +455,14 @@ function renderMerchantPanel(record, mode = "summary") {
           ? `
             <div class="detail-card">
               <h3><span class="material-symbols-outlined">assignment</span> Datos del Permiso</h3>
-              <div class="detail-row"><b>Numero de autorizacion</b><span>${escapeHtml(record.licencia || "-")}</span></div>
+              <div class="detail-row"><b>Número de autorización</b><span>${escapeHtml(record.licencia || "-")}</span></div>
               <div class="detail-row"><b>Vigencia</b><span>${escapeHtml(record.vigencia || "-")}</span></div>
               <div class="detail-row"><b>Rubro</b><span>${escapeHtml(recordRubros(record).join(" + ") || "-")}</span></div>
               <div class="detail-row"><b>Giro original</b><span>${escapeHtml(record.giro || "-")}</span></div>
               <div class="detail-row"><b>Detalle de venta</b><span>${escapeHtml(record.productos || "-")}</span></div>
             </div>
             <div class="detail-card">
-              <h3><span class="material-symbols-outlined">location_on</span> Ubicacion</h3>
+              <h3><span class="material-symbols-outlined">location_on</span> Ubicación</h3>
               <div class="detail-row"><b>Zona</b><span>${escapeHtml(record.zona || "-")}</span></div>
               <div class="detail-row"><b>Lugar exacto</b><span>${escapeHtml(record.lugar_exacto || "-")}</span></div>
               <div class="detail-row"><b>Turno</b><span>${turnoLabel(record.turno)}</span></div>
@@ -474,7 +475,7 @@ function renderMerchantPanel(record, mode = "summary") {
           : `
             <div class="summary-grid">
               <div><span>Giro</span><strong>${escapeHtml(recordRubros(record)[0] || "-")}</strong></div>
-              <div><span>Ubicacion</span><strong>${escapeHtml(record.lugar_exacto || record.zona || "-")}</strong></div>
+              <div><span>Ubicación</span><strong>${escapeHtml(record.lugar_exacto || record.zona || "-")}</strong></div>
             </div>
             <div class="summary-actions">
               <button class="btn primary" type="button" data-action="detail"><span class="material-symbols-outlined">visibility</span> Ver detalle</button>
@@ -487,11 +488,15 @@ function renderMerchantPanel(record, mode = "summary") {
     button.addEventListener("click", () => {
       const action = button.getAttribute("data-action");
       if (action === "close") closeMerchantPanel();
-      if (action === "detail" || action === "history") renderMerchantPanel(record, "detail");
+      if (action === "detail" || action === "history") {
+        renderMerchantPanel(record, "detail");
+        if (action === "history") panel.querySelector(".permit-history-list")?.scrollIntoView({ block: "start" });
+      }
       if (action === "summary") renderMerchantPanel(record, "summary");
     });
   });
   panel.classList.add("open");
+  window.ComercioUI.openPanel(panel, closeMerchantPanel);
 }
 
 function searchMatches(record, query) {
@@ -516,7 +521,9 @@ function searchMatches(record, query) {
 
 function renderSearchResults(query = "") {
   if (!ui.searchResults) return;
-  const records = state.allData.filter((record) => searchMatches(record, query));
+  const records = window.ComercioUI.filterRecords(state.allData, query, {
+    matches: searchMatches, status: permitStatus, rubros: recordRubros
+  });
   ui.searchResults.innerHTML = records.length
     ? records.map((record) => {
         const status = permitStatus(record);
@@ -535,26 +542,32 @@ function renderSearchResults(query = "") {
             </div>
           </article>`;
       }).join("")
-    : `<div class="empty-results">No se encontraron permisos con esa busqueda.</div>`;
+    : window.ComercioUI.emptyResults();
 
-  ui.searchResults.querySelectorAll(".merchant-card").forEach((card) => {
-    card.addEventListener("click", () => {
-      const record = state.allData.find((item) => String(item.id) === card.dataset.id);
-      if (record) renderMerchantPanel(record, "detail");
-    });
+  window.ComercioUI.bindResultCards(ui.searchResults, (id) => {
+    const record = state.allData.find((item) => String(item.id) === id);
+    if (record) renderMerchantPanel(record, "detail");
   });
 }
 
 function setAppMode(mode) {
+  if (mode !== "admin") {
+    finishAssignMode();
+    closeFineAdjust();
+    state.zoneDrawHandler?.disable();
+    state.mapSelectionMode = false;
+    renderSelectionPanel();
+  }
   document.body.classList.toggle("search-mode", mode === "search");
   ui.bottomAdmin?.classList.toggle("active", mode === "admin");
   ui.bottomSearch?.classList.toggle("active", mode === "search");
   ui.bottomMap?.classList.toggle("active", mode === "map");
+  window.ComercioUI.syncNavigation(mode);
   closeMerchantPanel();
   if (mode === "search") {
     renderSearchResults(ui.moduleSearchInput?.value || "");
     window.setTimeout(() => ui.moduleSearchInput?.focus(), 50);
-  } else if (mode === "map") {
+  } else {
     repairMapLayout(true);
   }
 }
@@ -679,6 +692,7 @@ function zonePopup(feature) {
 }
 
 function selectZone(id) {
+  window.ComercioUI.activateTool("zones");
   state.selectedZoneId = id || "";
   const selected = state.zoneFeatures.find((feature) => feature.properties?.id === id);
   if (selected) {
@@ -1625,7 +1639,7 @@ function setLeafletTheme(theme) {
 function setMobileFiltersOpen(forceOpen) {
   if (!ui.mainFilters || !ui.btnFilters) return;
 
-  if (window.innerWidth > 768) {
+  if (window.innerWidth >= 900) {
     ui.mainFilters.classList.remove("mobile-collapsed");
     ui.btnFilters.setAttribute("aria-expanded", "true");
     return;
@@ -1724,14 +1738,6 @@ function attachUiEvents() {
 
   ui.moduleSearchInput?.addEventListener("input", () => renderSearchResults(ui.moduleSearchInput.value));
 
-  document.querySelectorAll(".quick-filters button").forEach((button) => {
-    button.addEventListener("click", () => {
-      const query = button.getAttribute("data-query") || "";
-      ui.moduleSearchInput.value = query;
-      renderSearchResults(query);
-    });
-  });
-
   ui.btnToggleMapSelection?.addEventListener("click", toggleMapSelectionMode);
   ui.btnCopySelection?.addEventListener("click", copySelectionForExcel);
   ui.btnDownloadSelectionXlsx?.addEventListener("click", downloadSelectionXlsx);
@@ -1769,7 +1775,7 @@ function attachUiEvents() {
   window.addEventListener("resize", () => {
     adjustFabOffset();
     repairMapLayout(false);
-    if (window.innerWidth > 768) {
+    if (window.innerWidth >= 900) {
       setMobileFiltersOpen(true);
     }
   });
@@ -1905,13 +1911,14 @@ async function persistRecordLocation(record, lat, lng, clear = false) {
 
 window.initMap = async function initMap() {
   cacheDom();
+  window.ComercioUI.init({ renderSearch: renderSearchResults, setMode: setAppMode });
   adjustFabOffset();
 
   const savedTheme = window.localStorage.getItem("prefers-theme") || "light";
   setTheme(savedTheme);
   createMap();
   attachUiEvents();
-  setMobileFiltersOpen(window.innerWidth > 768);
+  setMobileFiltersOpen(window.innerWidth >= 900);
 
   try {
     await loadData();

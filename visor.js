@@ -119,7 +119,7 @@ function visorIsCompactDevice() {
 
 function visorToast(message, ok = true) {
   visorUi.toast.textContent = message;
-  visorUi.toast.style.background = ok ? "#0ea5e9" : "#ef4444";
+  visorUi.toast.dataset.tone = ok ? "success" : "error";
   visorUi.toast.classList.add("show");
   window.clearTimeout(visorState.toastTimer);
   visorState.toastTimer = window.setTimeout(() => visorUi.toast.classList.remove("show"), 2400);
@@ -338,6 +338,7 @@ function visorGetPermitPanel() {
 function visorCloseMerchantPanel() {
   const panel = document.getElementById("merchantPanel");
   if (panel) panel.classList.remove("open", "detail-mode");
+  window.ComercioUI.panelClosed();
 }
 
 function visorRenderPermitHistory(record) {
@@ -365,7 +366,7 @@ function visorRenderMerchantPanel(record, mode = "summary") {
     <div class="merchant-panel-card">
       <div class="panel-handle"></div>
       <div class="panel-header">
-        <button class="panel-icon-btn" type="button" data-action="${detail ? "summary" : "close"}">
+        <button class="panel-icon-btn" type="button" data-action="${detail && !document.body.classList.contains("search-mode") ? "summary" : "close"}">
           <span class="material-symbols-outlined">${detail ? "arrow_back" : "close"}</span>
         </button>
         <div>
@@ -381,14 +382,14 @@ function visorRenderMerchantPanel(record, mode = "summary") {
           ? `
             <div class="detail-card">
               <h3><span class="material-symbols-outlined">assignment</span> Datos del Permiso</h3>
-              <div class="detail-row"><b>Numero de autorizacion</b><span>${visorEscapeHtml(record.licencia || "-")}</span></div>
+              <div class="detail-row"><b>Número de autorización</b><span>${visorEscapeHtml(record.licencia || "-")}</span></div>
               <div class="detail-row"><b>Vigencia</b><span>${visorEscapeHtml(record.vigencia || "-")}</span></div>
               <div class="detail-row"><b>Rubro</b><span>${visorEscapeHtml(visorRecordRubros(record).join(" + ") || "-")}</span></div>
               <div class="detail-row"><b>Giro original</b><span>${visorEscapeHtml(record.giro || "-")}</span></div>
               <div class="detail-row"><b>Detalle de venta</b><span>${visorEscapeHtml(record.productos || "-")}</span></div>
             </div>
             <div class="detail-card">
-              <h3><span class="material-symbols-outlined">location_on</span> Ubicacion</h3>
+              <h3><span class="material-symbols-outlined">location_on</span> Ubicación</h3>
               <div class="detail-row"><b>Zona</b><span>${visorEscapeHtml(record.zona || "-")}</span></div>
               <div class="detail-row"><b>Lugar exacto</b><span>${visorEscapeHtml(record.lugar_exacto || "-")}</span></div>
               <div class="detail-row"><b>Turno</b><span>${visorTurnoLabel(record.turno)}</span></div>
@@ -401,7 +402,7 @@ function visorRenderMerchantPanel(record, mode = "summary") {
           : `
             <div class="summary-grid">
               <div><span>Giro</span><strong>${visorEscapeHtml(visorRecordRubros(record)[0] || "-")}</strong></div>
-              <div><span>Ubicacion</span><strong>${visorEscapeHtml(record.lugar_exacto || record.zona || "-")}</strong></div>
+              <div><span>Ubicación</span><strong>${visorEscapeHtml(record.lugar_exacto || record.zona || "-")}</strong></div>
             </div>
             <div class="summary-actions">
               <button class="btn primary" type="button" data-action="detail"><span class="material-symbols-outlined">visibility</span> Ver detalle</button>
@@ -414,11 +415,15 @@ function visorRenderMerchantPanel(record, mode = "summary") {
     button.addEventListener("click", () => {
       const action = button.getAttribute("data-action");
       if (action === "close") visorCloseMerchantPanel();
-      if (action === "detail" || action === "history") visorRenderMerchantPanel(record, "detail");
+      if (action === "detail" || action === "history") {
+        visorRenderMerchantPanel(record, "detail");
+        if (action === "history") panel.querySelector(".permit-history-list")?.scrollIntoView({ block: "start" });
+      }
       if (action === "summary") visorRenderMerchantPanel(record, "summary");
     });
   });
   panel.classList.add("open");
+  window.ComercioUI.openPanel(panel, visorCloseMerchantPanel);
 }
 
 function visorSearchMatches(record, query) {
@@ -443,7 +448,9 @@ function visorSearchMatches(record, query) {
 
 function visorRenderSearchResults(query = "") {
   if (!visorUi.searchResults) return;
-  const records = visorState.allData.filter((record) => visorSearchMatches(record, query));
+  const records = window.ComercioUI.filterRecords(visorState.allData, query, {
+    matches: visorSearchMatches, status: visorPermitStatus, rubros: visorRecordRubros
+  });
   visorUi.searchResults.innerHTML = records.length
     ? records.map((record) => {
         const status = visorPermitStatus(record);
@@ -462,13 +469,11 @@ function visorRenderSearchResults(query = "") {
             </div>
           </article>`;
       }).join("")
-    : `<div class="empty-results">No se encontraron permisos con esa busqueda.</div>`;
+    : window.ComercioUI.emptyResults();
 
-  visorUi.searchResults.querySelectorAll(".merchant-card").forEach((card) => {
-    card.addEventListener("click", () => {
-      const record = visorState.allData.find((item) => String(item.id) === card.dataset.id);
-      if (record) visorRenderMerchantPanel(record, "detail");
-    });
+  window.ComercioUI.bindResultCards(visorUi.searchResults, (id) => {
+    const record = visorState.allData.find((item) => String(item.id) === id);
+    if (record) visorRenderMerchantPanel(record, "detail");
   });
 }
 
@@ -476,6 +481,7 @@ function visorSetAppMode(mode) {
   document.body.classList.toggle("search-mode", mode === "search");
   visorUi.bottomSearch?.classList.toggle("active", mode === "search");
   visorUi.bottomMap?.classList.toggle("active", mode !== "search");
+  window.ComercioUI.syncNavigation(mode);
   visorCloseMerchantPanel();
   if (mode === "search") {
     visorRenderSearchResults(visorUi.moduleSearchInput?.value || "");
@@ -896,7 +902,7 @@ function visorSetTheme(themeName) {
 function visorSetMobileFiltersOpen(forceOpen) {
   if (!visorUi.mainFilters || !visorUi.btnFilters) return;
 
-  if (window.innerWidth > 768) {
+  if (window.innerWidth >= 900) {
     visorUi.mainFilters.classList.remove("mobile-collapsed");
     visorUi.btnFilters.setAttribute("aria-expanded", "true");
     return;
@@ -958,18 +964,10 @@ function visorAttachUiEvents() {
 
   visorUi.moduleSearchInput?.addEventListener("input", () => visorRenderSearchResults(visorUi.moduleSearchInput.value));
 
-  document.querySelectorAll(".quick-filters button").forEach((button) => {
-    button.addEventListener("click", () => {
-      const query = button.getAttribute("data-query") || "";
-      visorUi.moduleSearchInput.value = query;
-      visorRenderSearchResults(query);
-    });
-  });
-
   window.addEventListener("resize", () => {
     visorScheduleRefresh(false);
     visorRepairMapLayout(false);
-    if (window.innerWidth > 768) {
+    if (window.innerWidth >= 900) {
       visorSetMobileFiltersOpen(true);
     }
   });
@@ -1019,11 +1017,12 @@ async function visorLoadData() {
 
 window.initMap = async function initMap() {
   cacheVisorDom();
+  window.ComercioUI.init({ renderSearch: visorRenderSearchResults, setMode: visorSetAppMode });
   const savedTheme = window.localStorage.getItem("prefers-theme-visor-ambulantes") || "light";
   visorSetTheme(savedTheme);
   visorCreateMap();
   visorAttachUiEvents();
-  visorSetMobileFiltersOpen(window.innerWidth > 768);
+  visorSetMobileFiltersOpen(window.innerWidth >= 900);
 
   try {
     await visorLoadData();

@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="interface.css" />
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -17,7 +18,7 @@
   />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
 </head>
-<body>
+<body class="commerce-app admin-app" data-app-mode="admin">
   <header class="hero fade-in main-hero app-topbar">
     <div class="brand-lockup">
       <span class="material-symbols-outlined brand-icon" aria-hidden="true">account_balance</span>
@@ -27,6 +28,7 @@
       </div>
     </div>
     <div class="theme">
+      <span class="access-badge"><span class="material-symbols-outlined" aria-hidden="true">admin_panel_settings</span> Administración</span>
       <button id="themeToggle" class="btn icon-only" type="button" aria-label="Cambiar tema">
         <span id="themeIcon" class="material-symbols-outlined" aria-hidden="true">dark_mode</span>
       </button>
@@ -83,17 +85,26 @@
 
     <section id="searchModule" class="search-module" aria-label="Buscar comerciantes">
       <div class="search-shell">
+        <div class="page-heading"><span class="section-eyebrow">Registro municipal</span><h2>Comerciantes y permisos</h2></div>
         <label class="search-box" for="moduleSearchInput">
           <span class="material-symbols-outlined" aria-hidden="true">search</span>
-          <input id="moduleSearchInput" type="search" placeholder="Buscar por nombre, DNI, permiso o estado" />
+          <input id="moduleSearchInput" type="search" placeholder="Nombre, DNI o número de permiso" autocomplete="off" />
         </label>
         <div class="quick-filters" aria-label="Filtros rapidos">
-          <button type="button" data-query="">Todos</button>
-          <button type="button" data-query="vigente">Vigentes</button>
-          <button type="button" data-query="vencido">Vencidos</button>
-          <button type="button" data-query="sándwiches">Sándwiches</button>
-          <button type="button" data-query="bebidas saludables">Bebidas</button>
+          <button type="button" data-status="" aria-pressed="true">Todos</button>
+          <button type="button" data-status="Vigente" aria-pressed="false"><span class="status-indicator current"></span>Vigentes</button>
+          <button type="button" data-status="Vencido" aria-pressed="false"><span class="status-indicator past"></span>Vencidos</button>
         </div>
+        <details class="search-filter-panel" open>
+        <summary><span class="material-symbols-outlined" aria-hidden="true">tune</span>Filtros adicionales<span id="searchAppliedFilters"></span><span class="material-symbols-outlined filter-chevron" aria-hidden="true">expand_more</span></summary>
+        <div class="search-refinements">
+          <label for="searchRubro">Rubro<select id="searchRubro"><option value="">Todos los rubros</option></select></label>
+          <label for="searchTurno">Turno<select id="searchTurno"><option value="">Todos los turnos</option><option value="manana">Mañana</option><option value="tarde">Tarde</option></select></label>
+          <label for="searchOrder">Ordenar<select id="searchOrder"><option value="name">Nombre: A a Z</option><option value="status">Vigentes primero</option></select></label>
+          <button id="clearSearchFilters" class="btn icon-only" type="button" title="Limpiar búsqueda y filtros" aria-label="Limpiar búsqueda y filtros"><span class="material-symbols-outlined" aria-hidden="true">filter_alt_off</span></button>
+        </div>
+        </details>
+        <div class="results-toolbar"><strong id="searchResultCount" role="status">Cargando comerciantes…</strong><span>Permiso actual</span></div>
         <div id="searchResults" class="search-results"></div>
       </div>
     </section>
@@ -148,7 +159,6 @@
         <span class="material-symbols-outlined" aria-hidden="true">select_check_box</span>
         <strong>Selección desde el mapa</strong>
       </div>
-      <p class="selection-help">Activa la selección y toca los puntos del mapa. Luego copia o descarga la información completa.</p>
       <div class="selection-actions">
         <button id="btnToggleMapSelection" class="btn primary" type="button"><span class="material-symbols-outlined">touch_app</span> Seleccionar en mapa</button>
         <button id="btnCopySelection" class="btn" type="button" disabled><span class="material-symbols-outlined">content_copy</span> Copiar Excel</button>
@@ -237,7 +247,6 @@
     <button id="btnKmz" class="btn primary" type="button"><span class="material-symbols-outlined" aria-hidden="true">archive</span> KMZ</button>
     <button id="btnXlsx" class="btn" type="button"><span class="material-symbols-outlined" aria-hidden="true">table</span> XLSX</button>
     <button id="btnCsv" class="btn" type="button"><span class="material-symbols-outlined" aria-hidden="true">csv</span> CSV</button>
-    <span class="note-inline">Para Google Earth usa KMZ. Para editar datos usa XLSX o CSV.</span>
   </footer>
 
   <nav class="bottom-nav" aria-label="Navegación principal">
@@ -259,6 +268,7 @@
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="data-source.js"></script>
+  <script src="interface.js"></script>
   <script src="script.js"></script>
   <script>window.addEventListener("DOMContentLoaded", initMap);</script>
 </body>
