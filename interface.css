@@ -250,6 +250,15 @@
   max-width: min(430px, calc(100vw - 28px));
 }
 .commerce-app .zone-leaflet-popup { z-index: 1600; }
+.commerce-app .zone-leaflet-popup .leaflet-popup-content-wrapper {
+  width: min(430px, calc(100vw - 28px)) !important;
+  max-width: min(430px, calc(100vw - 28px)) !important;
+}
+.commerce-app .zone-leaflet-popup .leaflet-popup-content {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+}
 .commerce-app .leaflet-popup-content:has(.zone-popup) {
   width: auto !important;
   max-width: min(390px, calc(100vw - 60px));
@@ -352,6 +361,7 @@
   .commerce-app .export .btn { flex: 1; padding-inline: 8px; }
   .commerce-app .merchant-panel.detail-mode { inset: 0; padding: 0; }
   .commerce-app .leaflet-popup-content-wrapper:has(.zone-popup) {
+    width: calc(100vw - 24px) !important;
     max-width: calc(100vw - 24px);
     border-radius: 18px;
   }

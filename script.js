@@ -729,6 +729,7 @@ function renderZones() {
       autoPan: true,
       autoPanPaddingTopLeft: [18, 18],
       autoPanPaddingBottomRight: [18, 18],
+      minWidth: 260,
       maxWidth: 430
     });
     const selectAndOpenZone = (event) => {
